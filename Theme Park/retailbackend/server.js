@@ -89,29 +89,43 @@ const server = http.createServer((req, res) => {
         }
     }
 
-    const relativePath = cleanPath.replace(/^\/+/, "");
-    const filePath = path.resolve(PUBLIC_DIR, relativePath);
-
-    // Security check
     const publicRoot = path.resolve(PUBLIC_DIR);
-    if (!filePath.startsWith(publicRoot + path.sep)) {
-        res.writeHead(403);
-        return res.end("Forbidden");
+    const relativePath = cleanPath.replace(/^\/+/, "");
+    const staticCandidates = [relativePath];
+
+    // Allow area-scoped URLs (e.g. /portal/12/app.js) to resolve root assets.
+    if (isFrontendMountRequest) {
+        const segments = relativePath.split("/").filter(Boolean);
+        if (segments.length > 1) {
+            staticCandidates.push(segments.slice(1).join("/"));
+        }
     }
 
-    // Serve static file if it exists
-    fs.stat(filePath, (err, stat) => {
-        if (!err && stat.isFile()) {
-            return serveStatic(res, filePath);
+    const tryServeStatic = (index = 0) => {
+        if (index >= staticCandidates.length) {
+            // SPA fallback for portal deep-links (e.g. /portal/dashboard).
+            if (req.method === "GET" && isFrontendMountRequest && !path.extname(cleanPath)) {
+                return serveStatic(res, path.join(PUBLIC_DIR, "index.html"));
+            }
+            return routes(req, res, url, sendJSON, parseBody);
         }
 
-        // SPA fallback for portal deep-links (e.g. /portal/dashboard).
-        if (req.method === "GET" && isFrontendMountRequest && !path.extname(cleanPath)) {
-            return serveStatic(res, path.join(PUBLIC_DIR, "index.html"));
+        const filePath = path.resolve(PUBLIC_DIR, staticCandidates[index]);
+        const isInsidePublicDir = filePath === publicRoot || filePath.startsWith(publicRoot + path.sep);
+        if (!isInsidePublicDir) {
+            res.writeHead(403);
+            return res.end("Forbidden");
         }
 
-        routes(req, res, url, sendJSON, parseBody);
-    });
+        fs.stat(filePath, (err, stat) => {
+            if (!err && stat.isFile()) {
+                return serveStatic(res, filePath);
+            }
+            return tryServeStatic(index + 1);
+        });
+    };
+
+    tryServeStatic();
 });
 
 // ======================
