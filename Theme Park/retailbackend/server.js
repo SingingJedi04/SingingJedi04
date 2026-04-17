@@ -24,7 +24,7 @@ const parseBody = (req, callback) => {
 // STATIC FILE SERVING
 // ======================
 const PUBLIC_DIR = path.join(__dirname, "public", "retailfront");
-const FRONTEND_MOUNTS = ["/retailfront", "/portal"];
+const FRONTEND_MOUNTS = new Set(["retailfront", "portal", "retailportal", "retail-portal"]);
 
 const CONTENT_TYPES = {
     ".html": "text/html",
@@ -74,19 +74,16 @@ const server = http.createServer((req, res) => {
         cleanPath = "/index.html";
     }
 
-    // Support serving the frontend from known mount points.
-    // Example: "/portal/app.js" -> "/app.js"
-    for (const mount of FRONTEND_MOUNTS) {
-        if (cleanPath === mount || cleanPath === `${mount}/`) {
-            cleanPath = "/index.html";
-            isFrontendMountRequest = true;
-            break;
-        }
-        if (cleanPath.startsWith(`${mount}/`)) {
-            cleanPath = cleanPath.slice(mount.length);
-            isFrontendMountRequest = true;
-            break;
-        }
+    // Support serving the frontend from known mount points, case-insensitively.
+    // Examples:
+    // "/portal/app.js" -> "/app.js"
+    // "/Portal/200/dashboard" -> "/200/dashboard"
+    const pathSegments = cleanPath.split("/").filter(Boolean);
+    const mountSegment = pathSegments[0]?.toLowerCase();
+    if (mountSegment && FRONTEND_MOUNTS.has(mountSegment)) {
+        isFrontendMountRequest = true;
+        const remainder = pathSegments.slice(1).join("/");
+        cleanPath = remainder ? `/${remainder}` : "/index.html";
     }
 
     const publicRoot = path.resolve(PUBLIC_DIR);
