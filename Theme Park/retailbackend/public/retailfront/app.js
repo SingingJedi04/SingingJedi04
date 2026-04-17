@@ -10,6 +10,19 @@ if (!token) {
 const AREA_NAME    = sessionStorage.getItem("areaName");
 const MANAGER_NAME = sessionStorage.getItem("managerName");
 
+function extractAreaIdFromPath() {
+    const segments = window.location.pathname.split("/").filter(Boolean);
+    if (segments.length < 2) return null;
+    const possibleAreaId = Number.parseInt(segments[1], 10);
+    return Number.isNaN(possibleAreaId) ? null : possibleAreaId;
+}
+
+const AREA_ID = (
+    sessionStorage.getItem("areaID")
+    || sessionStorage.getItem("areaId")
+    || extractAreaIdFromPath()
+);
+
 // Set portal title
 document.getElementById("portal-title").textContent = `${AREA_NAME || "Retail"} Retail`;
 
@@ -18,10 +31,15 @@ document.getElementById("portal-title").textContent = `${AREA_NAME || "Retail"} 
 // =============================================================
 
 function authHeader() {
-    return {
+    const headers = {
         "Authorization": `Bearer ${token}`,
         "Content-Type": "application/json"
     };
+    if (AREA_ID) {
+        // Helps backend resolve manager area when token payload does not include user id.
+        headers["X-Area-ID"] = String(AREA_ID);
+    }
+    return headers;
 }
 
 // =============================================================
