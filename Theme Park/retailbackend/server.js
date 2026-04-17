@@ -24,6 +24,7 @@ const parseBody = (req, callback) => {
 // STATIC FILE SERVING
 // ======================
 const PUBLIC_DIR = path.join(__dirname, "public", "retailfront");
+const FRONTEND_MOUNTS = ["/retailfront", "/portal"];
 
 const CONTENT_TYPES = {
     ".html": "text/html",
@@ -66,18 +67,26 @@ const server = http.createServer((req, res) => {
 
     const url = new URL(req.url, `http://${req.headers.host}`);
     let cleanPath = url.pathname;
+    let isFrontendMountRequest = false;
 
     // Default to index.html
     if (cleanPath === "/" || cleanPath === "") {
         cleanPath = "/index.html";
     }
 
-    // Support serving the frontend at both "/" and "/retailfront".
-    // Example: "/retailfront/app.js" -> "/app.js"
-    if (cleanPath === "/retailfront" || cleanPath === "/retailfront/") {
-        cleanPath = "/index.html";
-    } else if (cleanPath.startsWith("/retailfront/")) {
-        cleanPath = cleanPath.slice("/retailfront".length);
+    // Support serving the frontend from known mount points.
+    // Example: "/portal/app.js" -> "/app.js"
+    for (const mount of FRONTEND_MOUNTS) {
+        if (cleanPath === mount || cleanPath === `${mount}/`) {
+            cleanPath = "/index.html";
+            isFrontendMountRequest = true;
+            break;
+        }
+        if (cleanPath.startsWith(`${mount}/`)) {
+            cleanPath = cleanPath.slice(mount.length);
+            isFrontendMountRequest = true;
+            break;
+        }
     }
 
     const relativePath = cleanPath.replace(/^\/+/, "");
@@ -94,6 +103,11 @@ const server = http.createServer((req, res) => {
     fs.stat(filePath, (err, stat) => {
         if (!err && stat.isFile()) {
             return serveStatic(res, filePath);
+        }
+
+        // SPA fallback for portal deep-links (e.g. /portal/dashboard).
+        if (req.method === "GET" && isFrontendMountRequest && !path.extname(cleanPath)) {
+            return serveStatic(res, path.join(PUBLIC_DIR, "index.html"));
         }
 
         routes(req, res, url, sendJSON, parseBody);
