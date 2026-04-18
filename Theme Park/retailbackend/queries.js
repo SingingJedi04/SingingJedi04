@@ -1,5 +1,5 @@
 const db = require("./db");
-
+ 
 // LOGIN
 const loginManager = (username, password, callback) => {
     const sql = `
@@ -21,12 +21,12 @@ const loginManager = (username, password, callback) => {
         callback(null, results[0]);
     });
 };
-
-
+ 
+ 
 // -------------------------------------------------------
 // REPORTS
 // -------------------------------------------------------
-
+ 
 const getProfitReport = (areaID, startDate, endDate, retailID, callback) => {
     const sql = `
         SELECT
@@ -49,24 +49,24 @@ const getProfitReport = (areaID, startDate, endDate, retailID, callback) => {
     `;
     db.query(sql, [areaID, startDate, endDate, retailID, retailID], (err, results) => {
         if (err) return callback(err);
-
+ 
         const enriched = results.map(row => {
             const revenue = Number(row.Revenue) || 0;
             const cogs = Number(row.COGS) || 0;
             const grossProfit = revenue - cogs;
             const grossMarginPct = revenue === 0 ? 0 : (grossProfit / revenue) * 100;
-
+ 
             return {
                 ...row,
                 GrossProfit: grossProfit,
                 GrossMarginPct: grossMarginPct
             };
         });
-
+ 
         callback(null, enriched);
     });
 };
-
+ 
 const getDamagedStolenReport = (areaID, startDate, endDate, retailID, callback) => {
     const sql = `
         SELECT
@@ -87,7 +87,7 @@ const getDamagedStolenReport = (areaID, startDate, endDate, retailID, callback) 
     `;
     db.query(sql, [areaID, startDate, endDate, retailID, retailID], callback);
 };
-
+ 
 const getItemsBoughtReport = (areaID, startDate, endDate, retailID, callback) => {
     const sql = `
         SELECT
@@ -108,11 +108,11 @@ const getItemsBoughtReport = (areaID, startDate, endDate, retailID, callback) =>
     `;
     db.query(sql, [areaID, startDate, endDate, retailID, retailID], callback);
 };
-
+ 
 // -------------------------------------------------------
 // INVENTORY
 // -------------------------------------------------------
-
+ 
 const getInventory = (areaID, callback) => {
     const sql = `
         SELECT
@@ -132,7 +132,7 @@ const getInventory = (areaID, callback) => {
     `;
     db.query(sql, [areaID], callback);
 };
-
+ 
 const adjustQuantity = (itemID, newQuantity, callback) => {
     const sql = `
         UPDATE RetailItem
@@ -141,7 +141,7 @@ const adjustQuantity = (itemID, newQuantity, callback) => {
     `;
     db.query(sql, [newQuantity, itemID], (err, results) => {
         if (err) return callback(err);
-
+ 
         // Check low stock after adjustment
         const checkSQL = `
             SELECT 
@@ -172,7 +172,7 @@ const adjustQuantity = (itemID, newQuantity, callback) => {
         });
     });
 };
-
+ 
 const updateThreshold = (itemID, threshold, callback) => {
     const sql = `
         UPDATE RetailItem
@@ -181,7 +181,7 @@ const updateThreshold = (itemID, threshold, callback) => {
     `;
     db.query(sql, [threshold, itemID], callback);
 };
-
+ 
 const addItem = (itemName, buyPrice, sellPrice, discountPrice, quantity, threshold, retailID, callback) => {
     const sql = `
         INSERT INTO RetailItem 
@@ -190,7 +190,7 @@ const addItem = (itemName, buyPrice, sellPrice, discountPrice, quantity, thresho
     `;
     db.query(sql, [itemName, buyPrice, sellPrice, discountPrice, quantity, threshold, retailID], callback);
 };
-
+ 
 const setItemActive = (itemID, isActive, callback) => {
     const sql = `
         UPDATE RetailItem
@@ -199,11 +199,11 @@ const setItemActive = (itemID, isActive, callback) => {
     `;
     db.query(sql, [isActive, itemID], callback);
 };
-
+ 
 // -------------------------------------------------------
 // PRICING
 // -------------------------------------------------------
-
+ 
 const updatePrices = (itemID, buyPrice, sellPrice, discountPrice, callback) => {
     const sql = `
         UPDATE RetailItem
@@ -212,11 +212,11 @@ const updatePrices = (itemID, buyPrice, sellPrice, discountPrice, callback) => {
     `;
     db.query(sql, [buyPrice, sellPrice, discountPrice, itemID], callback);
 };
-
+ 
 // -------------------------------------------------------
 // STORE MANAGEMENT
 // -------------------------------------------------------
-
+ 
 const addStore = (retailName, areaID, callback) => {
     const sql = `
         INSERT INTO RetailPlace (RetailName, AreaID)
@@ -224,7 +224,7 @@ const addStore = (retailName, areaID, callback) => {
     `;
     db.query(sql, [retailName, areaID], callback);
 };
-
+ 
 const getStores = (areaID, callback) => {
     const sql = `
         SELECT * FROM RetailPlace
@@ -232,11 +232,11 @@ const getStores = (areaID, callback) => {
     `;
     db.query(sql, [areaID], callback);
 };
-
+ 
 // -------------------------------------------------------
 // LOGS
 // -------------------------------------------------------
-
+ 
 const addRestock = (itemID, quantity, callback) => {
     const sql = `
         INSERT INTO RestockLog (ItemID, Quantity, Cost)
@@ -244,7 +244,7 @@ const addRestock = (itemID, quantity, callback) => {
     `;
     db.query(sql, [itemID, quantity], callback);
 };
-
+ 
 const getRestockHistory = (areaID, callback) => {
     const sql = `
         SELECT
@@ -260,7 +260,7 @@ const getRestockHistory = (areaID, callback) => {
     `;
     db.query(sql, [areaID], callback);
 };
-
+ 
 const addTransaction = (itemID, type, quantity, callback) => {
     const sql = `
         INSERT INTO TransactionLog (ItemID, VisitorID, Date, Time, Type, Price, Quantity, TotalCost)
@@ -268,7 +268,7 @@ const addTransaction = (itemID, type, quantity, callback) => {
     `;
     db.query(sql, [itemID, type, quantity], callback);
 };
-
+ 
 const getTransactionHistory = (areaID, callback) => {
     const sql = `
         SELECT
@@ -289,7 +289,7 @@ const getTransactionHistory = (areaID, callback) => {
     `;
     db.query(sql, [areaID], callback);
 };
-
+ 
 const getNotifications = (areaID, callback) => {
     const sql = `
         SELECT
@@ -305,7 +305,7 @@ const getNotifications = (areaID, callback) => {
     `;
     db.query(sql, [areaID], callback);
 };
-
+ 
 module.exports = {
     loginManager,
     getProfitReport,
