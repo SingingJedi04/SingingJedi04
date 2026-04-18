@@ -35,12 +35,30 @@ function getManagerArea(userID, callback) {
     });
 }
 
+function parseIntSafe(value) {
+    const parsed = Number.parseInt(value, 10);
+    return Number.isNaN(parsed) ? null : parsed;
+}
+
+function resolveAreaID(req, decoded, callback) {
+    const areaFromToken = parseIntSafe(decoded?.areaID ?? decoded?.areaId);
+    if (areaFromToken !== null) return callback(areaFromToken);
+
+    const userID = parseIntSafe(decoded?.id ?? decoded?.userID ?? decoded?.UserID ?? decoded?.sub);
+    if (userID !== null) return getManagerArea(userID, callback);
+
+    const areaFromHeader = parseIntSafe(req.headers["x-area-id"]);
+    if (areaFromHeader !== null) return callback(areaFromHeader);
+
+    return callback(null);
+}
+
 module.exports = function registerRoutes(req, res, url, sendJSON, parseBody) {
     const path    = url.pathname;
     const decoded = verifyToken(req, sendJSON, res);
     if (!decoded) return;
 
-    getManagerArea(decoded.id, (areaID) => {
+    resolveAreaID(req, decoded, (areaID) => {
         if (areaID === null || areaID === undefined) {
             return sendJSON(res, 403, { error: "No area assigned" });
         }
