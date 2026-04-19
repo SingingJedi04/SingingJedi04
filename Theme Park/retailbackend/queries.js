@@ -225,12 +225,13 @@ const addStore = (retailName, areaID, callback) => {
     db.query(sql, [retailName, areaID], callback);
 };
 
-const getStores = (areaID, callback) => {
+const getStores = (callback) => {
     const sql = `
-        SELECT * FROM RetailPlace
-        WHERE AreaID = ?
+        SELECT RetailID, RetailName, AreaID
+        FROM RetailPlace
+        ORDER BY RetailID ASC
     `;
-    db.query(sql, [areaID], callback);
+    db.query(sql, callback);
 };
 
 // -------------------------------------------------------

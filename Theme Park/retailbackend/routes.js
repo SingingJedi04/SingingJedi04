@@ -163,7 +163,7 @@ module.exports = function registerRoutes(req, res, url, sendJSON, parseBody) {
         // -------------------------------------------------------
 
         } else if (path === "/stores" && req.method === "GET") {
-            queries.getStores(areaID, (err, results) => {
+            queries.getStores((err, results) => {
                 if (err) return sendJSON(res, 500, { error: err.message });
                 sendJSON(res, 200, results);
             });
