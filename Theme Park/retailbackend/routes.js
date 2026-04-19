@@ -76,7 +76,7 @@ module.exports = function registerRoutes(req, res, url, sendJSON, parseBody) {
                 sendJSON(res, 200, results);
             });
 
-        } else if (path === "/damaged-stolen" && req.method === "GET") {
+        } else if (path === "/inventory-loss" && req.method === "GET") {
             const startDate = url.searchParams.get("startDate");
             const endDate   = url.searchParams.get("endDate");
             const retailID  = url.searchParams.get("retailID");
@@ -99,7 +99,8 @@ module.exports = function registerRoutes(req, res, url, sendJSON, parseBody) {
         // -------------------------------------------------------
 
         } else if (path === "/inventory" && req.method === "GET") {
-            queries.getInventory(areaID, (err, results) => {
+            const retailID = url.searchParams.get("retailID");
+            queries.getInventory(areaID, retailID, (err, results) => {
                 if (err) return sendJSON(res, 500, { error: err.message });
                 sendJSON(res, 200, results);
             });
@@ -131,6 +132,16 @@ module.exports = function registerRoutes(req, res, url, sendJSON, parseBody) {
                 queries.addItem(itemName, buyPrice, sellPrice, discountPrice, quantity, threshold, retailID, (err) => {
                     if (err) return sendJSON(res, 500, { error: err.message });
                     sendJSON(res, 200, { message: "Item added successfully" });
+                });
+            });
+
+        } else if (path === "/item/name" && req.method === "PUT") {
+            parseBody(req, (body) => {
+                if (!body) return sendJSON(res, 400, { error: "Invalid request body" });
+                const { itemID, itemName } = body;
+                queries.updateItemName(itemID, itemName, (err) => {
+                    if (err) return sendJSON(res, 500, { error: err.message });
+                    sendJSON(res, 200, { message: "Item name updated successfully" });
                 });
             });
 
@@ -168,6 +179,16 @@ module.exports = function registerRoutes(req, res, url, sendJSON, parseBody) {
                 sendJSON(res, 200, results);
             });
 
+        } else if (path === "/store/name" && req.method === "PUT") {
+            parseBody(req, (body) => {
+                if (!body) return sendJSON(res, 400, { error: "Invalid request body" });
+                const { retailID, retailName } = body;
+                queries.updateStoreName(retailID, retailName, (err) => {
+                    if (err) return sendJSON(res, 500, { error: err.message });
+                    sendJSON(res, 200, { message: "Store name updated successfully" });
+                });
+            });
+
         } else if (path === "/store" && req.method === "POST") {
             parseBody(req, (body) => {
                 if (!body) return sendJSON(res, 400, { error: "Invalid request body" });
@@ -193,7 +214,8 @@ module.exports = function registerRoutes(req, res, url, sendJSON, parseBody) {
             });
 
         } else if (path === "/restock/history" && req.method === "GET") {
-            queries.getRestockHistory(areaID, (err, results) => {
+            const retailID = url.searchParams.get("retailID");
+            queries.getRestockHistory(areaID, retailID, (err, results) => {
                 if (err) return sendJSON(res, 500, { error: err.message });
                 sendJSON(res, 200, results);
             });
@@ -209,7 +231,8 @@ module.exports = function registerRoutes(req, res, url, sendJSON, parseBody) {
             });
 
         } else if (path === "/transactions" && req.method === "GET") {
-            queries.getTransactionHistory(areaID, (err, results) => {
+            const retailID = url.searchParams.get("retailID");
+            queries.getTransactionHistory(areaID, retailID, (err, results) => {
                 if (err) return sendJSON(res, 500, { error: err.message });
                 sendJSON(res, 200, results);
             });
