@@ -53,6 +53,27 @@ function resolveAreaID(req, decoded, callback) {
     return callback(null);
 }
 
+function explainPriceConstraint(errorMessage) {
+    const msg = String(errorMessage || "");
+    if (!msg) {
+        return "Price values failed validation";
+    }
+
+    if (
+        msg.includes("CHECK constraint failed")
+        || msg.includes("CONSTRAINT")
+        || msg.includes("constraint")
+    ) {
+        return "Invalid price relationship. Ensure Buy Price <= Sell Price and Discount Price is between Buy and Sell (or blank).";
+    }
+
+    if (msg.includes("Out of range value")) {
+        return "One or more prices are out of the allowed numeric range.";
+    }
+
+    return msg;
+}
+
 module.exports = function registerRoutes(req, res, url, sendJSON, parseBody) {
     const path    = url.pathname;
     const decoded = verifyToken(req, sendJSON, res);
@@ -76,7 +97,7 @@ module.exports = function registerRoutes(req, res, url, sendJSON, parseBody) {
                 sendJSON(res, 200, results);
             });
 
-        } else if (path === "/damaged-stolen" && req.method === "GET") {
+        } else if (path === "/inventory-loss" && req.method === "GET") {
             const startDate = url.searchParams.get("startDate");
             const endDate   = url.searchParams.get("endDate");
             const retailID  = url.searchParams.get("retailID");
@@ -99,7 +120,8 @@ module.exports = function registerRoutes(req, res, url, sendJSON, parseBody) {
         // -------------------------------------------------------
 
         } else if (path === "/inventory" && req.method === "GET") {
-            queries.getInventory(areaID, (err, results) => {
+            const retailID = url.searchParams.get("retailID");
+            queries.getInventory(areaID, retailID, (err, results) => {
                 if (err) return sendJSON(res, 500, { error: err.message });
                 sendJSON(res, 200, results);
             });
@@ -129,8 +151,18 @@ module.exports = function registerRoutes(req, res, url, sendJSON, parseBody) {
                 if (!body) return sendJSON(res, 400, { error: "Invalid request body" });
                 const { itemName, buyPrice, sellPrice, discountPrice, quantity, threshold, retailID } = body;
                 queries.addItem(itemName, buyPrice, sellPrice, discountPrice, quantity, threshold, retailID, (err) => {
-                    if (err) return sendJSON(res, 500, { error: err.message });
+                    if (err) return sendJSON(res, 400, { error: explainPriceConstraint(err.message) });
                     sendJSON(res, 200, { message: "Item added successfully" });
+                });
+            });
+
+        } else if (path === "/item/name" && req.method === "PUT") {
+            parseBody(req, (body) => {
+                if (!body) return sendJSON(res, 400, { error: "Invalid request body" });
+                const { itemID, itemName } = body;
+                queries.updateItemName(itemID, itemName, (err) => {
+                    if (err) return sendJSON(res, 500, { error: err.message });
+                    sendJSON(res, 200, { message: "Item name updated successfully" });
                 });
             });
 
@@ -153,7 +185,7 @@ module.exports = function registerRoutes(req, res, url, sendJSON, parseBody) {
                 if (!body) return sendJSON(res, 400, { error: "Invalid request body" });
                 const { itemID, buyPrice, sellPrice, discountPrice } = body;
                 queries.updatePrices(itemID, buyPrice, sellPrice, discountPrice, (err) => {
-                    if (err) return sendJSON(res, 500, { error: err.message });
+                    if (err) return sendJSON(res, 400, { error: explainPriceConstraint(err.message) });
                     sendJSON(res, 200, { message: "Prices updated successfully" });
                 });
             });
@@ -163,9 +195,22 @@ module.exports = function registerRoutes(req, res, url, sendJSON, parseBody) {
         // -------------------------------------------------------
 
         } else if (path === "/stores" && req.method === "GET") {
-            queries.getStores((err, results) => {
+            queries.getStores(areaID, (err, results) => {
                 if (err) return sendJSON(res, 500, { error: err.message });
                 sendJSON(res, 200, results);
+            });
+
+        } else if (path === "/store/name" && req.method === "PUT") {
+            parseBody(req, (body) => {
+                if (!body) return sendJSON(res, 400, { error: "Invalid request body" });
+                const { retailID, retailName } = body;
+                queries.updateStoreName(retailID, retailName, areaID, (err, results) => {
+                    if (err) return sendJSON(res, 500, { error: err.message });
+                    if (!results || results.affectedRows === 0) {
+                        return sendJSON(res, 403, { error: "Store not in your area" });
+                    }
+                    sendJSON(res, 200, { message: "Store name updated successfully" });
+                });
             });
 
         } else if (path === "/store" && req.method === "POST") {
@@ -193,7 +238,8 @@ module.exports = function registerRoutes(req, res, url, sendJSON, parseBody) {
             });
 
         } else if (path === "/restock/history" && req.method === "GET") {
-            queries.getRestockHistory(areaID, (err, results) => {
+            const retailID = url.searchParams.get("retailID");
+            queries.getRestockHistory(areaID, retailID, (err, results) => {
                 if (err) return sendJSON(res, 500, { error: err.message });
                 sendJSON(res, 200, results);
             });
@@ -209,7 +255,8 @@ module.exports = function registerRoutes(req, res, url, sendJSON, parseBody) {
             });
 
         } else if (path === "/transactions" && req.method === "GET") {
-            queries.getTransactionHistory(areaID, (err, results) => {
+            const retailID = url.searchParams.get("retailID");
+            queries.getTransactionHistory(areaID, retailID, (err, results) => {
                 if (err) return sendJSON(res, 500, { error: err.message });
                 sendJSON(res, 200, results);
             });
