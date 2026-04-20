@@ -1,7 +1,16 @@
 -- RestockLog seed inserts based on ItemID keys from Sheet5 (1-951).
--- Cost is derived from RetailItem.BuyPrice so it stays consistent with pricing data.
+-- Uses a temporary staging table so final insert does not read RetailItem directly.
+-- This avoids MySQL error 1442 when RestockLog triggers update RetailItem.
 
-INSERT INTO RestockLog (ItemID, Quantity, Cost)
+DROP TEMPORARY TABLE IF EXISTS tmp_restock_seed;
+
+CREATE TEMPORARY TABLE tmp_restock_seed (
+    ItemID   INT NOT NULL,
+    Quantity INT NOT NULL,
+    Cost     DECIMAL(10,2) NOT NULL
+);
+
+INSERT INTO tmp_restock_seed (ItemID, Quantity, Cost)
 SELECT
     ri.ItemID,
     CASE
@@ -23,5 +32,11 @@ SELECT
     ) AS Cost
 FROM RetailItem ri
 WHERE ri.ItemID BETWEEN 1 AND 951
-  AND ri.IsActive = TRUE
-ORDER BY ri.ItemID;
+  AND ri.IsActive = TRUE;
+
+INSERT INTO RestockLog (ItemID, Quantity, Cost)
+SELECT ItemID, Quantity, Cost
+FROM tmp_restock_seed
+ORDER BY ItemID;
+
+DROP TEMPORARY TABLE IF EXISTS tmp_restock_seed;
